@@ -1,0 +1,1 @@
+config: `~/.config/sorta/config.yml`
