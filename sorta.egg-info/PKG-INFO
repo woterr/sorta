@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: sorta
+Version: 0.1.1
+Summary: A CLI tool to automatically sort PDFs and PPTX files into folders using keyword-based routing.
+Author: woterr
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: typer>=0.12.0
+Requires-Dist: rich>=13.7.0
+Provides-Extra: pdf
+Requires-Dist: pypdf>=4.0.0; extra == "pdf"
+
+config: `~/.config/sorta/config.yml`

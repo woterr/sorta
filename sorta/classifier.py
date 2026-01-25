@@ -1,4 +1,7 @@
 import re
+from pathlib import Path
+from datetime import datetime
+import json
 
 
 def normalize(text: str) -> str:
@@ -9,6 +12,7 @@ def normalize(text: str) -> str:
 
 def keyword_score(text: str, keywords: list[str]) -> int:
     score = 0
+    # replace with regex later
     for kw in keywords:
         if kw.lower() in text:
             score += 1
@@ -30,29 +34,46 @@ def pick_best(text: str, candidates: list[str], config: dict):
     return best
 
 
+def logger(log: dict, config: dict):
+    log_dir = Path(config.get("log_dir", "~/.cache/sorta")).expanduser()
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    log_file = log_dir / "sorta.log"
+
+    log["timestamp"] = datetime.now().isoformat()
+
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(log, ensure_ascii=False) + "\n")
+
+
 def apply_rules(root_name, meta, text, config):
     base_path = meta["path"]
 
-    best_rule = None
-    best_score = 0
+    scores = []
 
     for rule_name in meta.get("rule_set", []):
-        rule_keywords = config["rules"][rule_name]["keywords"]
+        keywords = config["rules"][rule_name]["keywords"]
+        score = keyword_score(text, keywords)
 
-        score = keyword_score(text, rule_keywords)
+        if score > 0:
+            scores.append((rule_name, score))
 
-        if score > best_score:
-            best_score = score
-            best_rule = rule_name
+    if not scores:
+        return {"root": root_name, "type": None, "dest": base_path}
 
-    if best_rule:
+    scores.sort(key=lambda x: x[1], reverse=True)
+
+    best_rule, best_score = scores[0]
+
+    if len(scores) > 1 and scores[1][1] == best_score:
         return {
             "root": root_name,
-            "type": best_rule,
-            "dest": f"{base_path}/{best_rule}",
+            "type": "AMBIGUOUS",
+            "dest": config["unsorted"],
+            "candidates": scores,
         }
 
-    return {"root": root_name, "type": None, "dest": base_path}
+    return {"root": root_name, "type": best_rule, "dest": f"{base_path}/{best_rule}"}
 
 
 def classify(text: str, config: dict):
@@ -69,9 +90,13 @@ def classify(text: str, config: dict):
             best_child = pick_best(text, children, config)
 
             if best_child is None:
-                return apply_rules(current, meta, text, config)
+                result = apply_rules(current, meta, text, config)
+                logger(result, config)
+                return result
 
             current = best_child
             continue
 
-        return apply_rules(current, meta, text, config)
+        result = apply_rules(current, meta, text, config)
+        logger(result, config)
+        return result
