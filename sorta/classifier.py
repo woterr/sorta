@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 from datetime import datetime
 import json
+from sorta.logger import logger
 
 
 def normalize(text: str) -> str:
@@ -32,18 +33,6 @@ def pick_best(text: str, candidates: list[str], config: dict):
             best = name
 
     return best
-
-
-def logger(log: dict, config: dict):
-    log_dir = Path(config.get("log_dir", "~/.cache/sorta")).expanduser()
-    log_dir.mkdir(parents=True, exist_ok=True)
-
-    log_file = log_dir / "sorta.log"
-
-    log["timestamp"] = datetime.now().isoformat()
-
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(json.dumps(log, ensure_ascii=False) + "\n")
 
 
 def apply_rules(root_name, meta, text, config):
@@ -98,5 +87,4 @@ def classify(text: str, config: dict):
             continue
 
         result = apply_rules(current, meta, text, config)
-        logger(result, config)
         return result

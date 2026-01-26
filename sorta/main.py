@@ -6,7 +6,8 @@ from sorta.pdf_extract import extract_pdf_text
 from sorta.classifier import classify
 from sorta.config_loader import load_config
 from sorta.move import move
-
+from sorta.watcher import watch_folder
+from sorta.logger import logger
 
 app = typer.Typer(help="sorta: Document sorter using keyword-based routing")
 
@@ -70,8 +71,15 @@ def classify_file(path: str):
 
     print("\n[bold green]Classification Result:[/bold green]")
     print(result)
-    print("\n[yellow]Moving file...[/yellow]")
-    move(src=file_path, dest_folder=result["dest"])
+    try:
+        print("\n[yellow]Moving file...[/yellow]")
+        move(src=file_path, dest_folder=result["dest"])
+    except PermissionError:
+        logger(
+            log={
+                ''
+            }
+        )
 
 
 @app.command()
@@ -136,9 +144,9 @@ def run(
 @app.command()
 def watch(folder: str):
     """
-    Watch a folder continuously (not implemented yet).
+    Watch a folder continuously.
     """
-    print("[red]Watch mode not implemented yet.[/red]")
+    watch_folder(folder, config=load_config())
 
 
 def main():
