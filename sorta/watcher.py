@@ -1,53 +1,46 @@
 import time
 from pathlib import Path
-
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from sorta.pdf_extract import extract_pdf_text
-from sorta.classifier import classify
-from sorta.move import move
+from sorta.pipeline import process_pdf
 
 
 class SortaHandler(FileSystemEventHandler):
     def __init__(self, config):
         self.config = config
 
-    def on_created(self, event):
-        if event.is_directory:
-            return
-
-        file_path = Path(event.src_path)
-
+    def handle_file(self, file_path: Path):
         if file_path.suffix.lower() != ".pdf":
             return
 
         if file_path.name.startswith(".") or ".part" in file_path.name:
             return
 
-        print(f"\nNew file detected: {file_path.name}")
-
-        if not wait_until_stable(file_path):  # to handle browser writing
-            print(f"File never stabilized: {file_path.name}")
+        if not wait_until_stable(file_path):  # to handle writing from browser
             return
 
+        if not file_path.exists():
+            return
+
+        print(f"\nNew file: {file_path.name}")
+
         try:
-            text = extract_pdf_text(str(file_path))
-
-            if len(text.strip()) < 50:
-                dest = self.config["unsorted"]
-                status = "NO_TEXT"
-            else:
-                result = classify(text, self.config)
-                dest = result["dest"]
-                status = result.get("type", "OK")
-
-            new_path = move(str(file_path), dest)
-
+            new_path = process_pdf(str(file_path), self.config, mode="watch")
             print(f"Moved → {new_path}")
 
         except Exception as e:
             print(f"Error processing {file_path.name}: {e}")
+
+    def on_created(self, event):
+        if event.is_directory:
+            return
+        self.handle_file(Path(event.src_path))
+
+    def on_modified(self, event):
+        if event.is_directory:
+            return
+        self.handle_file(Path(event.src_path))
 
 
 def watch_folder(folder: str, config: dict):
@@ -61,8 +54,8 @@ def watch_folder(folder: str, config: dict):
 
     observer.schedule(event_handler, str(folder_path), recursive=False)
 
-    print(f"\nWatching folder: {folder_path}")
-    print("Drop PDFs here. Press Ctrl+C to stop.\n")
+    print(f"\nWatching: {folder_path}")
+    print("Drop PDFs here. Ctrl+C to stop.\n")
 
     observer.start()
 
@@ -70,18 +63,15 @@ def watch_folder(folder: str, config: dict):
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\nStopping watcher...")
         observer.stop()
 
     observer.join()
 
 
 def wait_until_stable(path: Path, timeout=10):
-    """
-    Wait until file size stops changing (download finished).
-    """
     start = time.time()
     last_size = -1
+    stable_count = 0
 
     while time.time() - start < timeout:
         if not path.exists():
@@ -90,7 +80,11 @@ def wait_until_stable(path: Path, timeout=10):
         size = path.stat().st_size
 
         if size == last_size:
-            return True
+            stable_count += 1
+            if stable_count >= 2:
+                return True
+        else:
+            stable_count = 0
 
         last_size = size
         time.sleep(0.5)

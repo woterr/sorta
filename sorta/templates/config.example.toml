@@ -1,0 +1,22 @@
+dropbox = "~/SortaDrop"
+unsorted = "~/SortaDrop/UNSORTED"
+log_dir = "~/.cache/sorta"
+
+parent_root = "documents"
+
+
+[rules.NOTES]
+keywords = ["notes"]
+
+[rules.REFERENCE]
+keywords = ["manual", "documentation"]
+
+
+[roots.documents]
+path = "~/Documents/Sorta"
+children = ["study"]
+
+[roots.study]
+path = "~/Documents/Sorta/Study"
+keywords = ["unit", "lecture"]
+rule_set = ["NOTES", "REFERENCE"]
