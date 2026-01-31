@@ -2,7 +2,6 @@ import re
 from pathlib import Path
 from datetime import datetime
 import json
-from sorta.logger import logger
 
 
 def normalize(text: str) -> str:
@@ -36,12 +35,18 @@ def pick_best(text: str, candidates: list[str], config: dict):
 
 
 def apply_rules(root_name, meta, text, config):
+    def get_rule_keywords(root_meta, rule_name, config):
+        overrides = root_meta.get("rule_overrides", {})
+        if rule_name in overrides:
+            return overrides[rule_name]["keywords"]
+        return config["rules"][rule_name]["keywords"]
+
     base_path = meta["path"]
 
     scores = []
 
     for rule_name in meta.get("rule_set", []):
-        keywords = config["rules"][rule_name]["keywords"]
+        keywords = get_rule_keywords(meta, rule_name, config)
         score = keyword_score(text, keywords)
 
         if score > 0:
@@ -79,9 +84,7 @@ def classify(text: str, config: dict):
             best_child = pick_best(text, children, config)
 
             if best_child is None:
-                result = apply_rules(current, meta, text, config)
-                logger(result, config)
-                return result
+                return {"root": None, "type": None, "dest": config["unsorted"]}
 
             current = best_child
             continue
