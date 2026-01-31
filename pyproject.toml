@@ -9,7 +9,7 @@ version = "1.0.0"
 description = "A CLI tool to automatically sort PDFs and PPTX files into folders using keyword-based routing."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = "MIT"
 
 authors = [
     { name = "woterr" }
