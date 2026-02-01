@@ -2,20 +2,27 @@ import re
 from pathlib import Path
 from datetime import datetime
 import json
+import re
 
 
 def normalize(text: str) -> str:
     text = text.lower()
+    text = re.sub(r"[-–—]", " ", text)
     text = re.sub(r"\s+", " ", text)
-    return text
+    return text.strip()
 
 
 def keyword_score(text: str, keywords: list[str]) -> int:
     score = 0
-    # replace with regex later
+
     for kw in keywords:
-        if kw.lower() in text:
+        kw = kw.strip().lower()
+
+        pattern = r"\b" + re.escape(kw) + r"\b"
+
+        if re.search(pattern, text):
             score += 1
+
     return score
 
 
